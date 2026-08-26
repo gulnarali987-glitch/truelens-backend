@@ -2,6 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, AlertTriangle, ShieldAlert, ShieldCheck } from "lucide-react";
 import TiltCard from "@/components/TiltCard";
+import Confetti from "@/components/Confetti";
 
 function Meter({ value, negative }) {
   return (
@@ -120,10 +121,13 @@ export default function ResultCard({ result, checker }) {
 function ResultShell({ negative, title, sub, confidence, children }) {
   return (
     <AnimatePresence>
+      <Confetti active={!negative} count={80} />
       <motion.div
         key={title}
         initial={{ opacity: 0, y: 24, scale: 0.94, rotateX: -8 }}
-        animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+        animate={negative
+          ? { opacity: 1, y: 0, scale: 1, rotateX: 0, x: [0, -14, 12, -8, 6, 0] }
+          : { opacity: 1, y: 0, scale: 1, rotateX: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
         style={{ transformStyle: "preserve-3d" }}
         data-testid="result-card"

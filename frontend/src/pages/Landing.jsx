@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles, ShieldCheck, Zap, QrCode, Receipt, Type as TypeIc
 import Hero3D from "@/components/Hero3D";
 import Header from "@/components/Header";
 import CheckerWorkspace from "@/components/CheckerWorkspace";
+import MagneticButton from "@/components/MagneticButton";
 
 const chips = ["Text", "Image", "URL", "QR Code", "Payment SS", "No download"];
 
@@ -53,12 +54,16 @@ export default function Landing() {
               transition={{ duration: 0.9, delay: 0.25 }}
               className="flex flex-wrap gap-3 mt-8"
             >
-              <button onClick={scrollToApp} className="btn-pill bg-[#EEF1F6] text-[#1B2340] hover:bg-white text-base" data-testid="try-it-free-btn">
-                Try it free <ArrowRight size={16} className="inline ml-1" />
-              </button>
-              <Link to="/pricing" className="btn-pill bg-white/10 text-[#EEF1F6] hover:bg-white/20 text-base" data-testid="hero-pricing-btn">
-                See pricing
-              </Link>
+              <MagneticButton>
+                <button onClick={scrollToApp} className="btn-pill bg-[#EEF1F6] text-[#1B2340] hover:bg-white text-base" data-testid="try-it-free-btn">
+                  Try it free <ArrowRight size={16} className="inline ml-1" />
+                </button>
+              </MagneticButton>
+              <MagneticButton>
+                <Link to="/pricing" className="btn-pill bg-white/10 text-[#EEF1F6] hover:bg-white/20 text-base" data-testid="hero-pricing-btn">
+                  See pricing
+                </Link>
+              </MagneticButton>
             </motion.div>
             <div className="flex flex-wrap gap-2 mt-8" data-testid="hero-chips">
               {chips.map((c, i) => (

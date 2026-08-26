@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Dropzone from "@/components/Dropzone";
 import ResultCard from "@/components/ResultCard";
+import MagneticButton from "@/components/MagneticButton";
 import { Type, ImageIcon, QrCode, Receipt, Loader2, Link2 } from "lucide-react";
 
 const TABS = [
@@ -177,15 +178,17 @@ export default function CheckerWorkspace() {
               </div>
             )}
 
-            <button
-              onClick={run}
-              disabled={loading}
-              className="btn-pill mt-6 bg-[#1B2340] text-[#EEF1F6] hover:bg-[#0F1428] disabled:opacity-60 w-full md:w-auto flex items-center justify-center gap-2"
-              data-testid="verify-btn"
-            >
-              {loading && <Loader2 size={16} className="animate-spin" />}
-              {loading ? "Verifying…" : `Verify ${current.label}`}
-            </button>
+            <MagneticButton strength={0.25}>
+              <button
+                onClick={run}
+                disabled={loading}
+                className="btn-pill mt-6 bg-[#1B2340] text-[#EEF1F6] hover:bg-[#0F1428] disabled:opacity-60 w-full md:w-auto flex items-center justify-center gap-2"
+                data-testid="verify-btn"
+              >
+                {loading && <Loader2 size={16} className="animate-spin" />}
+                {loading ? "Verifying…" : `Verify ${current.label}`}
+              </button>
+            </MagneticButton>
           </motion.div>
         </div>
         <div className="md:col-span-2">

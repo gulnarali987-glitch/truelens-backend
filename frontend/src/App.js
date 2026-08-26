@@ -10,6 +10,8 @@ import Pricing from "@/pages/Pricing";
 import Dashboard from "@/pages/Dashboard";
 import PaymentSuccess from "@/pages/PaymentSuccess";
 import AuthCallback from "@/pages/AuthCallback";
+import GlowCursor from "@/components/GlowCursor";
+import ClickBurst from "@/components/ClickBurst";
 import "@/App.css";
 
 function Router() {
@@ -36,6 +38,8 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Router />
+        <ClickBurst />
+        <GlowCursor />
         <Toaster position="top-center" richColors />
       </AuthProvider>
     </BrowserRouter>
