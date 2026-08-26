@@ -94,17 +94,24 @@ export default function CheckerWorkspace() {
               <button
                 key={t.id}
                 onClick={() => { setTab(t.id); resetInputs(); }}
-                className="relative flex items-center gap-2 px-4 md:px-6 py-2.5 rounded-full text-sm font-semibold transition-colors z-10"
+                className="relative flex items-center gap-2 px-4 md:px-6 py-2.5 rounded-full text-sm font-semibold transition-colors z-10 hover:scale-[1.03] active:scale-[0.97]"
+                style={{ transition: "transform 180ms cubic-bezier(0.22,1,0.36,1), color 180ms ease" }}
                 data-testid={`tab-${t.id}`}
               >
                 {active && (
                   <motion.div
                     layoutId="tab-bg"
-                    className="absolute inset-0 bg-[#1B2340] rounded-full -z-10"
+                    className="absolute inset-0 bg-[#1B2340] rounded-full -z-10 shadow-lg"
                     transition={{ type: "spring", stiffness: 300, damping: 26 }}
                   />
                 )}
-                <Icon size={16} className={active ? "text-[#EEF1F6]" : "text-[#1B2340]"} />
+                <motion.span
+                  animate={active ? { rotate: [0, -12, 12, 0], scale: [1, 1.2, 1] } : { rotate: 0, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="inline-flex"
+                >
+                  <Icon size={16} className={active ? "text-[#EEF1F6]" : "text-[#1B2340]"} />
+                </motion.span>
                 <span className={active ? "text-[#EEF1F6]" : "text-[#1B2340]"}>{t.label}</span>
               </button>
             );

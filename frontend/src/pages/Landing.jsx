@@ -1,12 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles, ShieldCheck, Zap, QrCode, Receipt, Type as TypeIcon, ImageIcon } from "lucide-react";
+import { ArrowRight, Sparkles, ShieldCheck, Zap, QrCode, Receipt, Type as TypeIcon, ImageIcon, Link2 as LinkIcon } from "lucide-react";
 import Hero3D from "@/components/Hero3D";
 import Header from "@/components/Header";
 import CheckerWorkspace from "@/components/CheckerWorkspace";
 
-const chips = ["Text", "Image", "QR Code", "Payment SS", "No download", "Any device"];
+const chips = ["Text", "Image", "URL", "QR Code", "Payment SS", "No download"];
 
 export default function Landing() {
   const scrollToApp = () => {
@@ -45,7 +45,7 @@ export default function Landing() {
               transition={{ duration: 0.9, delay: 0.15 }}
               className="text-[#EEF1F6]/85 text-lg md:text-xl mt-6 max-w-2xl leading-relaxed"
             >
-              TrueLense verifies photos, statements, QR codes and payment screenshots — right in your browser. No app to install. Works on your phone, laptop, iPad or the classroom smart board.
+              TrueLense verifies photos, statements, articles, QR codes and payment screenshots — right in your browser. No app to install. Works on your phone, laptop, iPad or the classroom smart board.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -78,6 +78,7 @@ export default function Landing() {
             {[
               { icon: TypeIcon, label: "Text", color: "#EEF1F6" },
               { icon: ImageIcon, label: "Image", color: "#2F8F6F" },
+              { icon: LinkIcon, label: "URL", color: "#8AB4F8" },
               { icon: QrCode, label: "QR", color: "#E5A24A" },
               { icon: Receipt, label: "Payment", color: "#C1443B" },
             ].map((f, i) => (
@@ -108,6 +109,7 @@ export default function Landing() {
             <div key={k} className="flex gap-12 items-center">
               <span>Verify text</span><span>·</span>
               <span>Detect AI images</span><span>·</span>
+              <span>Scan articles from a URL</span><span>·</span>
               <span>Scan QR safely</span><span>·</span>
               <span>Spot fake payments</span><span>·</span>
               <span>Runs in any browser</span><span>·</span>

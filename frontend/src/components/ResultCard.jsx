@@ -1,6 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, AlertTriangle, ShieldAlert, ShieldCheck } from "lucide-react";
+import TiltCard from "@/components/TiltCard";
 
 function Meter({ value, negative }) {
   return (
@@ -121,33 +122,40 @@ function ResultShell({ negative, title, sub, confidence, children }) {
     <AnimatePresence>
       <motion.div
         key={title}
-        initial={{ opacity: 0, y: 20, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        initial={{ opacity: 0, y: 24, scale: 0.94, rotateX: -8 }}
+        animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
-        className={`relative rounded-3xl p-6 md:p-8 ${negative ? "bg-[#C1443B]/8" : "bg-[#2F8F6F]/8"} hairline`}
+        style={{ transformStyle: "preserve-3d" }}
         data-testid="result-card"
       >
-        <div className="flex items-center gap-3 mb-4">
-          <div className={`h-12 w-12 rounded-full flex items-center justify-center ${negative ? "bg-[#C1443B] text-white" : "bg-[#2F8F6F] text-white"}`}>
-            {negative ? <ShieldAlert size={22} /> : <ShieldCheck size={22} />}
-          </div>
-          <div>
-            <div className={`font-display text-2xl md:text-3xl font-bold ${negative ? "text-[#C1443B]" : "text-[#2F8F6F]"}`} data-testid="result-verdict">
-              {title}
+        <TiltCard max={8} glare className={`relative rounded-3xl p-6 md:p-8 ${negative ? "bg-[#C1443B]/8" : "bg-[#2F8F6F]/8"} hairline`}>
+          <div className="flex items-center gap-3 mb-4">
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
+              className={`h-12 w-12 rounded-full flex items-center justify-center ${negative ? "bg-[#C1443B] text-white" : "bg-[#2F8F6F] text-white"} shadow-lg`}
+            >
+              {negative ? <ShieldAlert size={22} /> : <ShieldCheck size={22} />}
+            </motion.div>
+            <div>
+              <div className={`font-display text-2xl md:text-3xl font-bold ${negative ? "text-[#C1443B]" : "text-[#2F8F6F]"}`} data-testid="result-verdict">
+                {title}
+              </div>
+              <div className="text-sm opacity-70">{sub}</div>
             </div>
-            <div className="text-sm opacity-70">{sub}</div>
           </div>
-        </div>
-        {confidence != null && (
-          <>
-            <div className="flex items-center justify-between mb-2">
-              <span className="label-tiny opacity-70">Confidence</span>
-              <span className="font-mono text-sm font-bold" data-testid="confidence-value">{confidence}%</span>
-            </div>
-            <Meter value={confidence} negative={negative} />
-          </>
-        )}
-        {children}
+          {confidence != null && (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <span className="label-tiny opacity-70">Confidence</span>
+                <span className="font-mono text-sm font-bold" data-testid="confidence-value">{confidence}%</span>
+              </div>
+              <Meter value={confidence} negative={negative} />
+            </>
+          )}
+          {children}
+        </TiltCard>
       </motion.div>
     </AnimatePresence>
   );
