@@ -1,0 +1,106 @@
+{
+  "theme": "hybrid_fullstack",
+  "mood": "Playful yet trustworthy, 3D interactive, bold typography, editorial spacing",
+  "typography": {
+    "headings": {
+      "family": "Outfit, Cabinet Grotesk, or Clash Display",
+      "style": "Bold, expressive, tight tracking (tracking-tight to tracking-tighter). Do NOT use Inter.",
+      "scale": "text-4xl to text-6xl (maximum text-6xl for hero, never text-7xl+). Hierarchy gap must be max 2 tailwind steps."
+    },
+    "body": {
+      "family": "Satoshi, Plus Jakarta Sans, or DM Sans",
+      "style": "Clean, readable, geometric. leading-relaxed."
+    },
+    "labels": {
+      "style": "Uppercase, tiny (text-xs), wide spacing (tracking-[0.2em])."
+    }
+  },
+  "colors": {
+    "primary_dark": "#1B2340",
+    "primary_light": "#EEF1F6",
+    "status_real": "#2F8F6F",
+    "status_fake": "#C1443B",
+    "text_on_dark": "#F8FAFC",
+    "text_on_light": "#0F172A",
+    "surface_glass": "rgba(255, 255, 255, 0.7)",
+    "surface_glass_dark": "rgba(27, 35, 64, 0.7)"
+  },
+  "visual_enhancers": {
+    "surfaces": "Use 'Optical Clarity' Glassmorphism (backdrop-blur-2xl, saturated, 1px delicate inner stroke border-white/40) for floating headers, tool panels, and modal overlays. Use 'Clay & Crisp' (Neumorphism with sharp 1px border) for dashboard widgets.",
+    "shapes": "Generous corner radii: rounded-2xl to rounded-3xl for major cards to keep the 'fun/playful' vibe. Pill-shaped buttons.",
+    "borders": "Never use solid thick borders. Use 1px borders with low opacity (border-black/5 or border-white/10).",
+    "shadows": "Ambient diffuse shadows: shadow-[0_8px_32px_rgba(27,35,64,0.12)]."
+  },
+  "grids_and_layouts": {
+    "spacing_system": "Generous Spacing: p-6, p-8, p-12. Containers with borders MUST have internal padding p-6 or p-8.",
+    "marketing_page": "Bento 'Tetris' grid (grid-cols-1 md:grid-cols-12, wide gap-8/gap-12). Asymmetry and visual tension. Never fill 100% of the grid perfectly.",
+    "dashboard_workspace": "Dense but rounded grid for the workspace. Grid items must be direct children. Override default stretch with align-items: start where needed.",
+    "hero_section": "Must feature a full-screen WebGL/3D background canvas with the UI chrome floating minimally on top. Text heavily contrasted. Max hero canvas overlay opacity bg-black/40."
+  },
+  "motion_and_interactions": {
+    "philosophy": "Dynamic, responsive, bouncy. Every interaction needs a micro-animation.",
+    "libraries": "framer-motion for UI transitions, @react-three/fiber and @react-three/drei for 3D backgrounds.",
+    "specifics": [
+      "Hover states: translate-y-1, subtle shadow increase.",
+      "Custom cursor: Consider a custom Framer Motion cursor (glowing dot) if feasible, to match the k95/laxspace aesthetic.",
+      "Tabs transition: Use layoutId in Framer Motion to slide the active tab background smoothly.",
+      "Result cards (Green/Red): Use a bouncy entrance (type: 'spring', stiffness: 200) and a counter animation for the confidence meter."
+    ]
+  },
+  "component_strategy": {
+    "marketing": "Custom pure HTML + Tailwind for structural layouts. Do not use Shadcn 'Card' for landing page bento-use raw divs for asymmetry.",
+    "workspace_and_dashboard": "Use Shadcn components (Tabs, Input, Buttons, Progress, Dialog) but deeply customize them: high rounded corners (rounded-full or rounded-2xl), paper-blue backgrounds, and remove the standard default borders.",
+    "buttons": "Pill-shaped (rounded-full). Hover: bg-opacity-90 + scale up 1.05.",
+    "navigation": "Sticky header with crystal glass effect (backdrop-blur-xl bg-[#EEF1F6]/70 or dark equivalent). Never fully transparent."
+  },
+  "3d_libraries": {
+    "recommendation": "@react-three/fiber and @react-three/drei",
+    "implementation": "Create a <Canvas> in the hero background. Add <Float> wrapping some primitive 3D geometries (e.g. <TorusKnot>, <Icosahedron>) or imported Spline models. Apply MeshPhysicalMaterial with transmission (glass-like) or the deep navy/paper blue colors. Add mouse interactivity via useFrame to rotate/move objects slightly based on pointer position. Ensure adequate lighting (<ambientLight>, <directionalLight>)."
+  },
+  "accessibility": {
+    "contrast": "Ensure text over 3D backgrounds uses text-shadow or a gradient overlay to maintain minimum 4.5:1 contrast. Dark text on paper-blue, white text on deep navy.",
+    "testing": "All interactive and key informational elements MUST include a `data-testid` attribute (e.g., data-testid='upload-dropzone', data-testid='verify-button').",
+    "motion": "Respect prefers-reduced-motion."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1653299832314-5d3dc1e5a83c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwxfHwzZCUyMGFic3RyYWN0JTIwc2hhcGUlMjBibHVlfGVufDB8fHx8MTc4NzcxMzc1Nnww&ixlib=rb-4.1.0&q=85",
+        "description": "3D abstract blue shape for background texture or feature card imagery.",
+        "category": "texture/background"
+      },
+      {
+        "url": "https://images.pexels.com/photos/4144768/pexels-photo-4144768.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Magnifying glass on blue surface. Great for the 'Image Checker' or 'How it works' section.",
+        "category": "feature_illustration"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwxfHxmdXR1cmlzdGljJTIwdGVjaG5vbG9neSUyMHNjYW58ZW58MHx8fHwxNzg3NzEzNzU3fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Teal LED futuristic scan panel. Use as a background for the dashboard or Payment Screenshot checker visualization.",
+        "category": "tech_scan"
+      }
+    ],
+    "icons": "Use @phosphor-icons/react (Duotone) or lucide-react. Ensure they match the playful but sharp aesthetic."
+  },
+  "instructions_to_main_agent": [
+    "Do NOT use 'Inter' for headings. Use Outfit or Cabinet Grotesk.",
+    "Do NOT make a standard centered SaaS layout. Build an asymmetrical bento grid for the landing page.",
+    "Make sure the hero section contains a 3D Canvas (@react-three/fiber) with floating, interactive geometries that reflect the deep navy and paper-blue palette. The user explicitly requested a 3D fun website like laxspace.co or k95.it.",
+    "In the TrueLense workspace, implement drag-and-drop zones for image/QR uploads with generous padding (p-12) and dashed 2px borders.",
+    "Result cards must vividly use #2F8F6F (Green) for real/verified and #C1443B (Amber-Red) for AI/fake. Add a confidence meter using Framer Motion progress bars.",
+    "Never use purely transparent backgrounds under text. Use solid #1B2340, #EEF1F6, or thick glassmorphism.",
+    "Add 'data-testid' to ALL buttons, inputs, tabs, and result elements."
+  ],
+  "universal_guidelines_for_main_agent": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: transition: all. Always add transitions for specific interactive elements.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file.",
+    "Always use modern button styles like pill-shaped with interaction animations.",
+    "NEVER: use AI assistant Emoji characters like robot, brain, etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Use sonner for toasts. Sonner component are located in /app/src/components/ui/sonner.js"
+  ]
+}
