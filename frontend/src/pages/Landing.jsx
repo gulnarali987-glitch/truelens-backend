@@ -359,10 +359,10 @@ export default function Landing() {
           <SpinMark size={140} color="#FF7A6A" />
         </div>
         <div className="max-w-4xl mx-auto px-6 relative">
-          <div className="absolute -top-4 left-1/4 -rotate-6 hidden md:block">
+          <div className="absolute -top-4 left-[18%] -rotate-6 hidden md:block">
             <PeelSticker color="coral" size="md" draggable={false}>FREE FOREVER PLAN</PeelSticker>
           </div>
-          <div className="absolute -top-2 right-1/4 rotate-6 hidden md:block">
+          <div className="absolute -top-2 right-[18%] rotate-6 hidden md:block">
             <PeelSticker color="mint" size="md" draggable={false}>NO CARD NEEDED</PeelSticker>
           </div>
           <Chip className="border-[#1B2340]/30 text-[#1B2340]/70">00_5 — Start</Chip>

@@ -25,7 +25,8 @@ export default function PeelSticker({
   return (
     <motion.div
       className={`peel ${color} ${sizeCls} inline-block will-change-transform ${className}`}
-      style={{ rotate: `${rotate}deg` }}
+      initial={{ rotate }}
+      animate={dragging ? { scale: 1.08, rotate } : { scale: 1, rotate }}
       drag={draggable}
       dragElastic={0.6}
       dragMomentum={true}
@@ -33,7 +34,6 @@ export default function PeelSticker({
       whileTap={{ scale: 0.95, rotate: rotate - 4 }}
       onDragStart={() => setDragging(true)}
       onDragEnd={() => setDragging(false)}
-      animate={dragging ? { scale: 1.08 } : { scale: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 18 }}
       data-testid={testid}
       data-noburst

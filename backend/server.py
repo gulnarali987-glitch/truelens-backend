@@ -13,7 +13,13 @@ import httpx
 import bcrypt
 import jwt as pyjwt
 from PIL import Image
-from pyzbar.pyzbar import decode as qr_decode
+try:
+    from pyzbar.pyzbar import decode as qr_decode
+    _QR_OK = True
+except Exception as _qr_err:  # native libzbar may be missing at boot
+    qr_decode = None
+    _QR_OK = False
+    logging.getLogger("truelense").warning(f"pyzbar disabled: {_qr_err}")
 from io import BytesIO
 import trafilatura
 
@@ -489,6 +495,8 @@ async def check_qr(
     if url and url.strip():
         decoded_url = url.strip()
     elif file:
+        if not _QR_OK:
+            raise HTTPException(503, "QR image decoding is temporarily unavailable on the server. Please paste the decoded URL directly.")
         content = await file.read()
         try:
             img = Image.open(BytesIO(content))

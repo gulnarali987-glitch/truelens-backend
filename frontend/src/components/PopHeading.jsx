@@ -22,7 +22,7 @@ export default function PopHeading({ text, className = "", offset = true, delay 
           {chars.map((ch, i) => (
             <motion.span
               key={i}
-              initial={{ y: "0.55em", opacity: 0 }}
+              initial={{ y: 24, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{
                 delay: delay + i * 0.025,
