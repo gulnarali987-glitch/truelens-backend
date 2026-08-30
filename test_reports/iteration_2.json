@@ -1,0 +1,61 @@
+{
+  "summary": "End-to-end verification of the Stripe -> Razorpay (Orders) payment swap. Created pytest suites (/app/backend/tests) covering /api/config, /api/pricing, checkout (auth + all plan amounts), signature verify with a hand-computed HMAC-SHA256 of `order_id|payment_id`, order status polling, the Razorpay webhook, plus auth + all 4 checkers + quota regression: 29 passed / 1 skipped (Winston credits exhausted upstream), 0 failed. Frontend: logged in as demo@truelense.app, /pricing renders INR (Rs 0 / 799 / 2,499 / 8,299), clicking a paid plan creates a real Razorpay order and opens the live Razorpay Checkout modal (correct amount 799/2499/8299, prefilled email, Test Mode ribbon) with zero pageerrors; /payment/success polls status and shows 'You're upgraded!'; anonymous click on a paid plan correctly redirects to /signup. Design confirmed unchanged (hero-headline, 10 peel stickers, 3D hero, all 5 tabs text/image/url/qr/payment, verify-btn, marquees, halftone/grain). TWO SECURITY/CORRECTNESS ISSUES FOUND: (1) the webhook accepts UNSIGNED requests (RAZORPAY_WEBHOOK_SECRET empty) and will upgrade any user's plan from an unauthenticated POST - reproduced live; (2) /api/payments/status/{order_id} is unauthenticated. Also found leftover Stripe copy in Dashboard.jsx and stripe in requirements.txt.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/webhook/razorpay", "issue": "With RAZORPAY_WEBHOOK_SECRET empty the handler only logs a warning and processes the event. Reproduced: an unauthenticated POST {event:'payment.captured', payload:{payment:{entity:{order_id:<any existing order>}}}} marked the tx paid and upgraded the user to business/starter for 30 days with NO payment. Any visitor who can obtain/guess an order_id gets a free upgrade. Fix: return 503/400 when the secret is not configured (fail closed), and additionally cross-check the payment with rzp.order.fetch/payment.fetch (status == 'paid' / amount_paid >= amount) before granting the plan.", "priority": "CRITICAL"},
+      {"endpoint": "GET /api/payments/status/{order_id}", "issue": "No authentication/ownership check - returns status + plan_id for any order_id (IDOR / information disclosure). Should require the JWT and match tx.user_id, like /payments/verify does.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/check/text, POST /api/check/url", "issue": "Winston rejects text < 300 chars and returns 400; the backend re-raises it as HTTPException(502). The k8s ingress swallows 502 and returns its own HTML 'Bad gateway' page, so the frontend never sees the JSON detail and can show no useful message. Same for Winston 402 INSUFFICIENT_CREDIT (currently hit: only ~490 credits left, a long article costs ~811). Use 400/422 for validation errors and 503 for upstream credit/outage, and add a min-length (300 char) validation on TextCheckIn + raise the url extract threshold from 100 to 300 chars."},
+      {"endpoint": "requirements.txt", "issue": "stripe==14.4.1 still declared although no Stripe code remains in server.py. Dead dependency - remove."},
+      {"endpoint": "POST /api/payments/checkout", "issue": "origin_url is required by CheckoutIn but never used in the Razorpay Orders flow (leftover from the Stripe redirect model). Either drop it or make it Optional."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Dashboard - Billing card", "issue": "User-facing copy still says 'Manage subscription, invoices and payment method in your Stripe portal.' after the swap to Razorpay.", "selector": "[data-testid=\"manage-billing\"] (surrounding card, Dashboard.jsx:59)", "priority": "HIGH"},
+      {"component": "Pricing - Free plan CTA", "issue": "For anonymous visitors the Free card button ('You're here') renders as a fully enabled dark pill but does nothing on click (subscribe() returns early for plan_id 'free'). Should be disabled/secondary styling when not logged in.", "selector": "[data-testid=\"subscribe-free\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Pricing -> Razorpay Checkout dismiss", "issue": "Could not confirm the button recovers after the shopper closes the checkout: with the Razorpay modal open, ESC x3 and clicks on both the inner 'Contact details' X and the outer 'Payment Options' X did not dismiss the third-party iframe in Playwright, and [data-testid=\"subscribe-*\"] stayed stuck on 'Loading…' and disabled for the whole session. modal.ondismiss -> setLoadingId(null) IS wired in Pricing.jsx, so this is likely an automation limitation with the cross-origin checkout frame, but it should be manually verified in a real browser - if ondismiss does not fire the user must reload the page to retry payment. Consider also resetting loadingId on window 'focus'/visibilitychange as a safety net.", "affected_selectors": ["[data-testid=\"subscribe-starter\"]", "[data-testid=\"subscribe-business\"]", "[data-testid=\"subscribe-enterprise\"]"]}
+    ],
+    "design_issues": [
+      {"screen": "Pricing", "issues": ["No visual regression from the Razorpay swap - layout, glass cards, featured dark Business card, fonts and spacing all intact at 1920px and 390px.", "Legacy USD sub-line ('~ $9 / month') is still shown under each INR price; harmless but it is the old Stripe-era pricing - confirm it is intentional.", "Pricing.jsx hardcodes the 4 plans/prices instead of consuming GET /api/pricing, so INR amounts can silently drift from the backend PLANS map (single source of truth)."]},
+      {"screen": "Landing / Workspace", "issues": ["Unchanged: hero-headline, 10 peel stickers, 3D shapes, marquee, halftone/grain, all 5 checker tabs and verify-btn present; 0 pageerrors."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/conftest.py",
+    "/app/backend/tests/test_razorpay_payments.py",
+    "/app/backend/tests/test_auth_and_checkers.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "CRITICAL: fail closed in POST /api/webhook/razorpay when RAZORPAY_WEBHOOK_SECRET is unset, and verify the payment with the Razorpay API before upgrading a plan (currently an anonymous POST grants a paid plan).",
+    "HIGH: require auth + ownership on GET /api/payments/status/{order_id}.",
+    "HIGH: replace the 'Stripe portal' copy in Dashboard.jsx:59 with Razorpay wording.",
+    "Remove stripe==14.4.1 from backend/requirements.txt; drop the unused origin_url from CheckoutIn.",
+    "Map Winston validation/credit failures to 400/422/503 instead of 502 (ingress replaces 502 with an HTML error page so users see nothing) and validate min 300 chars for text/url checks.",
+    "Manually confirm in a real browser that closing the Razorpay modal resets the subscribe button (ondismiss); consider a focus-based fallback.",
+    "Optional: drive Pricing.jsx prices from GET /api/pricing to avoid drift."
+  ],
+  "critical_code_review_comments": [
+    "_upgrade_user_for_order() is invoked from the webhook with no signature and no payment verification - that is the whole authorization for granting a paid plan. It must confirm status/amount with Razorpay before writing plan/plan_valid_until.",
+    "plan_valid_until is written (now+30d) but nothing enforces it: get_usage() reads user.plan only, so an expired paid plan keeps its 100/unlimited quota forever. Add an expiry check (fall back to 'free' when plan_valid_until < now).",
+    "server.py is 694 lines - right at the 700-line limit; split payments/auth/checkers into routers before adding more.",
+    "/api/payments/status polls Razorpay on every request without caching; a paid-order poll also upgrades the user, so an unauthenticated caller can trigger DB writes.",
+    "Signature check correctly uses hmac.compare_digest over `{order_id}|{payment_id}` and verify() also asserts tx.user_id == caller - verified good (valid signature for another user's order returns 404)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/conftest.py",
+    "/app/backend/tests/test_razorpay_payments.py",
+    "/app/backend/tests/test_auth_and_checkers.py"
+  ],
+  "success_rate": {"backend": "96% (29/30 executed assertions-based tests passed, 1 skipped due to exhausted Winston credits, 0 failed)", "frontend": "92% (pricing render, order creation, Razorpay modal open, payment-success polling, anon redirect, design all pass; modal-dismiss reset unverified)"},
+  "seed_data_creation": "Created transient TEST_*@qa-truelense.com users + Razorpay test orders; all test users, usage docs and payment_transactions were deleted afterwards and demo@truelense.app was reset to plan 'free' with plan_valid_until unset.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "demo@truelense.app / demo1234 (from /app/memory/test_credentials.md; note the file still documents a Stripe test card - update it to the Razorpay test card 4111 1111 1111 1111 / OTP 1111)",
+  "context_for_next_testing_agent": "Backend suites live in /app/backend/tests (conftest.py + test_razorpay_payments.py + test_auth_and_checkers.py). Run with `cd /app/backend && python -m pytest tests/ -n 0 -v` (serial; the shared demo user makes parallel runs racy). NOTE: files under /app/backend trigger uvicorn hot-reload, so the backend restarts when you edit tests. Never reuse one requests.Session for both authenticated and 'unauthenticated' assertions - login sets a session_token cookie and silently authenticates later calls (this caused false failures on the first run). Winston AI credits are nearly exhausted (~490 left, a long article costs ~811) so /api/check/url may return 502; /api/check/text needs >=300 chars. Razorpay Orders creation against the live test key works. Still untested: real card payment completion (deliberately skipped), payment.failed handling from the actual gateway, Emergent Google auth, plan expiry after plan_valid_until.",
+  "rca_of_the_issue": "Webhook free-upgrade: razorpay_webhook() only verifies X-Razorpay-Signature when RAZORPAY_WEBHOOK_SECRET is non-empty; the env var is currently '' so the else-branch just logs a warning and continues to _upgrade_user_for_order(order_id), which trusts the local transaction record and sets plan + plan_valid_until without ever asking Razorpay whether the order was actually paid. Reproduced with a plain unauthenticated POST containing an order_id from /payments/checkout - the demo user became 'business' with a 30-day validity. Secondary: 502-vs-ingress - HTTPException(502) from _winston_score is intercepted by the k8s/CDN edge which substitutes its own HTML 'Bad gateway' page, hiding the JSON detail from the SPA."
+}

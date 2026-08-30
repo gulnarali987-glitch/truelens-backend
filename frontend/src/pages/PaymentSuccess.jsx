@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import Header from "@/components/Header";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -7,25 +7,25 @@ import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
 export default function PaymentSuccess() {
   const [params] = useSearchParams();
-  const sessionId = params.get("session_id");
+  const subscriptionId = params.get("order_id") || params.get("subscription_id") || params.get("session_id");
   const [status, setStatus] = useState("polling");
   const [attempts, setAttempts] = useState(0);
   const { refresh } = useAuth();
 
   useEffect(() => {
-    if (!sessionId) { setStatus("error"); return; }
+    if (!subscriptionId) { setStatus("error"); return; }
     let cancelled = false;
     let tries = 0;
     const poll = async () => {
       try {
-        const { data } = await api.get(`/payments/status/${sessionId}`);
+        const { data } = await api.get(`/payments/status/${subscriptionId}`);
         if (cancelled) return;
         if (data.payment_status === "paid") {
           setStatus("paid");
           refresh();
           return;
         }
-        if (data.status === "expired" || data.payment_status === "failed") {
+        if (data.status === "cancelled" || data.payment_status === "failed") {
           setStatus("failed");
           return;
         }
@@ -39,7 +39,7 @@ export default function PaymentSuccess() {
     };
     poll();
     return () => { cancelled = true; };
-  }, [sessionId, refresh]);
+  }, [subscriptionId, refresh]);
 
   return (
     <div className="min-h-screen bg-[#EEF1F6] grain pt-24">
@@ -50,7 +50,7 @@ export default function PaymentSuccess() {
             <>
               <Loader2 size={40} className="animate-spin mx-auto text-[#1B2340]" />
               <h1 className="font-display text-2xl font-bold mt-4">Confirming your payment…</h1>
-              <p className="opacity-70 mt-2 text-sm">Poll {attempts}/15 · This is instant on card, may take a bit longer for other methods.</p>
+              <p className="opacity-70 mt-2 text-sm">Poll {attempts}/15 · Instant on card, slightly longer on UPI/netbanking.</p>
             </>
           )}
           {status === "paid" && (

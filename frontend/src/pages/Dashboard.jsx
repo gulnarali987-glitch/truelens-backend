@@ -56,7 +56,7 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="glass rounded-3xl p-8">
             <RefreshCw size={20} className="text-[#1B2340] mb-3" />
             <div className="label-tiny opacity-60">Billing</div>
-            <div className="text-sm opacity-70 mt-1">Manage subscription, invoices and payment method in your Stripe portal.</div>
+            <div className="text-sm opacity-70 mt-1">Manage your Razorpay-billed plan, past invoices and payment methods.</div>
             <a href="mailto:support@truelense.app" className="btn-pill mt-5 inline-block bg-[#1B2340]/5 text-[#1B2340] text-sm" data-testid="manage-billing">
               Contact billing
             </a>

@@ -8,11 +8,31 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 
 const PLANS = [
-  { id: "free", name: "Free", price: 0, tag: "Try it", features: ["5 checks / month", "All 4 checkers", "No credit card"], cta: "You're here" },
-  { id: "starter", name: "Starter", price: 9, tag: "Individuals", features: ["100 checks / month", "All 4 checkers", "Email support"], cta: "Get Starter" },
-  { id: "business", name: "Business", price: 29, tag: "Most popular", features: ["Unlimited checks", "Priority processing", "Priority support"], cta: "Get Business", featured: true },
-  { id: "enterprise", name: "Enterprise", price: 99, tag: "Teams", features: ["Unlimited checks", "API access", "Team accounts (coming)"], cta: "Get Enterprise" },
+  { id: "free",       name: "Free",       usd: 0,  inr: 0,     tag: "Try it",       features: ["5 checks / month", "All 4 checkers", "No credit card"],           cta: "You're here" },
+  { id: "starter",    name: "Starter",    usd: 9,  inr: 799,   tag: "Individuals",  features: ["100 checks / month", "All 4 checkers", "Email support"],           cta: "Get Starter" },
+  { id: "business",   name: "Business",   usd: 29, inr: 2499,  tag: "Most popular", features: ["Unlimited checks", "Priority processing", "Priority support"],     cta: "Get Business", featured: true },
+  { id: "enterprise", name: "Enterprise", usd: 99, inr: 8299,  tag: "Teams",        features: ["Unlimited checks", "API access", "Team accounts (coming)"],        cta: "Get Enterprise" },
 ];
+
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") return resolve(false);
+    if (window.Razorpay) return resolve(true);
+    const existing = document.getElementById("razorpay-checkout-js");
+    if (existing) {
+      existing.addEventListener("load", () => resolve(true));
+      existing.addEventListener("error", () => resolve(false));
+      return;
+    }
+    const s = document.createElement("script");
+    s.id = "razorpay-checkout-js";
+    s.src = "https://checkout.razorpay.com/v1/checkout.js";
+    s.async = true;
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
+}
 
 export default function Pricing() {
   const { user } = useAuth();
@@ -24,14 +44,51 @@ export default function Pricing() {
     if (planId === "free") return;
     setLoadingId(planId);
     try {
-      const { data } = await api.post("/payments/checkout", {
-        plan_id: planId,
-        origin_url: window.location.origin,
+      const ok = await loadRazorpayScript();
+      if (!ok) throw new Error("Failed to load Razorpay Checkout");
+
+      const { data } = await api.post("/payments/checkout", { plan_id: planId, origin_url: window.location.origin });
+
+      const rzp = new window.Razorpay({
+        key: data.key_id,
+        order_id: data.order_id,
+        amount: data.amount_paise,
+        currency: data.currency || "INR",
+        name: "TrueLense",
+        description: `${PLANS.find(p => p.id === planId)?.name} — monthly (30 days)`,
+        image: "/favicon.ico",
+        theme: { color: "#1B2340" },
+        prefill: {
+          email: user.email || "",
+          name: user.name || "",
+        },
+        notes: { plan_id: planId },
+        handler: async (resp) => {
+          try {
+            await api.post("/payments/verify", {
+              razorpay_payment_id: resp.razorpay_payment_id,
+              razorpay_order_id: resp.razorpay_order_id,
+              razorpay_signature: resp.razorpay_signature,
+            });
+            toast.success("Payment verified — you're upgraded!");
+            navigate(`/payment/success?order_id=${encodeURIComponent(resp.razorpay_order_id)}`);
+          } catch (err) {
+            toast.error(err?.response?.data?.detail || "Payment verification failed");
+          }
+        },
+        modal: {
+          ondismiss: () => setLoadingId(null),
+        },
       });
-      window.location.href = data.checkout_url;
+      rzp.on("payment.failed", (resp) => {
+        toast.error(resp?.error?.description || "Payment failed");
+        setLoadingId(null);
+      });
+      rzp.open();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Checkout failed");
-    } finally { setLoadingId(null); }
+      toast.error(err?.response?.data?.detail || err?.message || "Checkout failed");
+      setLoadingId(null);
+    }
   };
 
   return (
@@ -58,13 +115,14 @@ export default function Pricing() {
               </div>
               <div className="font-display text-3xl font-bold mt-2">{p.name}</div>
               <div className="mt-4">
-                <span className="font-display text-5xl font-black">${p.price}</span>
-                {p.price > 0 && <span className="opacity-60 ml-1">/mo</span>}
+                <span className="font-display text-5xl font-black">₹{p.inr.toLocaleString("en-IN")}</span>
+                {p.inr > 0 && <span className="opacity-60 ml-1">/mo</span>}
               </div>
+              {p.usd > 0 && <div className="text-xs opacity-50 mt-1">≈ ${p.usd} / month</div>}
               <ul className="mt-6 space-y-2 flex-1">
                 {p.features.map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm">
-                    <Check size={16} className={p.featured ? "text-[#2F8F6F] mt-0.5 shrink-0" : "text-[#2F8F6F] mt-0.5 shrink-0"} />
+                    <Check size={16} className="text-[#2F8F6F] mt-0.5 shrink-0" />
                     <span>{f}</span>
                   </li>
                 ))}
@@ -80,7 +138,9 @@ export default function Pricing() {
             </motion.div>
           ))}
         </div>
-        <div className="text-center opacity-60 text-sm mt-10">Test mode — use card <span className="font-mono">4242 4242 4242 4242</span>, any future date, any CVC.</div>
+        <div className="text-center opacity-60 text-sm mt-10">
+          Test mode — use card <span className="font-mono">4111 1111 1111 1111</span>, any future expiry, any CVC, OTP <span className="font-mono">1111</span>. UPI id <span className="font-mono">success@razorpay</span>.
+        </div>
       </div>
     </div>
   );

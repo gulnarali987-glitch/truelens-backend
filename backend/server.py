@@ -12,6 +12,9 @@ from urllib.parse import urlparse
 import httpx
 import bcrypt
 import jwt as pyjwt
+import razorpay
+import hmac
+import hashlib
 from PIL import Image
 try:
     from pyzbar.pyzbar import decode as qr_decode
@@ -30,10 +33,6 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr, Field
 from dotenv import load_dotenv
 
-from emergentintegrations.payments.stripe.checkout import (
-    StripeCheckout, CheckoutSessionRequest, CheckoutSessionResponse, CheckoutStatusResponse
-)
-
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
@@ -44,7 +43,11 @@ WINSTON_API_KEY = os.environ.get("WINSTON_API_KEY", "")
 SIGHTENGINE_USER = os.environ.get("SIGHTENGINE_API_USER", "")
 SIGHTENGINE_SECRET = os.environ.get("SIGHTENGINE_API_SECRET", "")
 JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret")
-STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "sk_test_emergent")
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
+
+rzp = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)) if (RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET) else None
 
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
@@ -56,11 +59,12 @@ log = logging.getLogger("truelense")
 logging.basicConfig(level=logging.INFO)
 
 # --- Plans / usage ---
+# price_inr is what Razorpay charges; price_usd kept for legacy display but unused for billing
 PLANS = {
-    "free": {"name": "Free", "monthly_limit": 5, "price_usd": 0.0},
-    "starter": {"name": "Starter", "monthly_limit": 100, "price_usd": 9.0},
-    "business": {"name": "Business", "monthly_limit": -1, "price_usd": 29.0},
-    "enterprise": {"name": "Enterprise", "monthly_limit": -1, "price_usd": 99.0},
+    "free":       {"name": "Free",       "monthly_limit": 5,   "price_usd": 0.0,  "price_inr": 0,     "period": None},
+    "starter":    {"name": "Starter",    "monthly_limit": 100, "price_usd": 9.0,  "price_inr": 799,   "period": "monthly"},
+    "business":   {"name": "Business",   "monthly_limit": -1,  "price_usd": 29.0, "price_inr": 2499,  "period": "monthly"},
+    "enterprise": {"name": "Enterprise", "monthly_limit": -1,  "price_usd": 99.0, "price_inr": 8299,  "period": "monthly"},
 }
 
 # --- Models ---
@@ -150,9 +154,21 @@ async def require_user(user=Depends(get_current_user)):
 
 # --- Usage tracking ---
 async def get_usage(user_id: str) -> Dict[str, Any]:
-    """Return {plan, used, limit, month}"""
+    """Return {plan, used, limit, month}. Falls back to 'free' if plan_valid_until has passed."""
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     plan = (user or {}).get("plan", "free")
+    valid_until = (user or {}).get("plan_valid_until")
+    if plan != "free" and valid_until:
+        try:
+            vu = datetime.fromisoformat(valid_until) if isinstance(valid_until, str) else valid_until
+            if vu.tzinfo is None:
+                vu = vu.replace(tzinfo=timezone.utc)
+            if vu < now_utc():
+                # Plan has expired — drop to free
+                await db.users.update_one({"user_id": user_id}, {"$set": {"plan": "free"}})
+                plan = "free"
+        except Exception:
+            pass
     mk = month_key()
     doc = await db.usage.find_one({"user_id": user_id, "month": mk}, {"_id": 0}) or {"count": 0}
     limit = PLANS[plan]["monthly_limit"]
@@ -518,98 +534,169 @@ async def check_qr(
         "checker": "qr",
     }
 
-# --- Payments (Stripe via emergentintegrations) ---
-def _stripe_checkout(host_url: str) -> StripeCheckout:
-    webhook_url = f"{host_url.rstrip('/')}/api/webhook/stripe"
-    return StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+# --- Payments (Razorpay Orders — one-time monthly payments) ---
+# Note: We use Razorpay Orders (not Subscriptions) because Subscriptions requires
+# enabling the Subscriptions feature in the Razorpay Dashboard. Orders work out-of-the-box.
+# To upgrade to auto-renewing Subscriptions later: enable Subscriptions in Razorpay Dashboard
+# and swap `rzp.order.create` for `rzp.subscription.create` with a Plan.
+
+@api.get("/config")
+async def config():
+    """Public config — only the Razorpay Key ID is exposed to the frontend."""
+    return {"razorpay_key_id": RAZORPAY_KEY_ID}
 
 @api.get("/pricing")
 async def pricing():
     return {"plans": [{"id": pid, **p} for pid, p in PLANS.items()]}
 
 @api.post("/payments/checkout")
-async def create_checkout(inp: CheckoutIn, request: Request, user=Depends(require_user)):
+async def create_checkout(inp: CheckoutIn, user=Depends(require_user)):
+    """Creates a Razorpay Order and returns the id + key for frontend Checkout."""
     if inp.plan_id not in PLANS or inp.plan_id == "free":
         raise HTTPException(400, "Invalid plan")
-    amount = float(PLANS[inp.plan_id]["price_usd"])
-    host_url = str(request.base_url)
-    checkout = _stripe_checkout(host_url)
-    success_url = f"{inp.origin_url.rstrip('/')}/payment/success?session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{inp.origin_url.rstrip('/')}/pricing"
-    req = CheckoutSessionRequest(
-        amount=amount,
-        currency="usd",
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={"user_id": user["user_id"], "plan_id": inp.plan_id, "email": user.get("email", "")},
-    )
-    session: CheckoutSessionResponse = await checkout.create_checkout_session(req)
+    if not rzp:
+        raise HTTPException(500, "Razorpay is not configured")
+    amount_paise = int(PLANS[inp.plan_id]["price_inr"]) * 100
+    receipt = f"tl_{user['user_id'][:16]}_{int(now_utc().timestamp())}"[:40]
+    try:
+        order = rzp.order.create({
+            "amount": amount_paise,
+            "currency": "INR",
+            "receipt": receipt,
+            "payment_capture": 1,
+            "notes": {
+                "user_id": user["user_id"],
+                "plan_id": inp.plan_id,
+                "email": user.get("email", ""),
+            },
+        })
+    except Exception as e:
+        log.error(f"Razorpay order create failed: {e}")
+        raise HTTPException(502, f"Razorpay error: {str(e)[:200]}")
     await db.payment_transactions.insert_one({
-        "session_id": session.session_id,
+        "order_id": order["id"],
         "user_id": user["user_id"],
         "plan_id": inp.plan_id,
-        "amount": amount,
-        "currency": "usd",
+        "amount_inr": int(PLANS[inp.plan_id]["price_inr"]),
+        "amount_paise": amount_paise,
+        "currency": "INR",
+        "provider": "razorpay",
         "status": "initiated",
         "payment_status": "pending",
         "created_at": now_utc().isoformat(),
         "updated_at": now_utc().isoformat(),
     })
-    return {"checkout_url": session.url, "session_id": session.session_id}
+    return {
+        "order_id": order["id"],
+        "key_id": RAZORPAY_KEY_ID,
+        "plan_id": inp.plan_id,
+        "amount_inr": int(PLANS[inp.plan_id]["price_inr"]),
+        "amount_paise": amount_paise,
+        "currency": "INR",
+    }
 
-async def _apply_plan_upgrade(session_id: str, status_obj: Any):
-    """Idempotent: on paid session, set user's plan."""
-    tx = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+class VerifyIn(BaseModel):
+    razorpay_payment_id: str
+    razorpay_order_id: str
+    razorpay_signature: str
+
+def _verify_signature(payload: str, signature: str, secret: str) -> bool:
+    expected = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
+
+async def _upgrade_user_for_order(order_id: str) -> Optional[Dict[str, Any]]:
+    tx = await db.payment_transactions.find_one({"order_id": order_id}, {"_id": 0})
     if not tx:
-        return
+        return None
     if tx.get("payment_status") == "paid":
-        return  # already applied
-    if getattr(status_obj, "payment_status", None) == "paid" or getattr(status_obj, "status", None) == "complete":
-        await db.payment_transactions.update_one(
-            {"session_id": session_id, "payment_status": {"$ne": "paid"}},
-            {"$set": {"status": "completed", "payment_status": "paid", "updated_at": now_utc().isoformat()}},
-        )
-        await db.users.update_one(
-            {"user_id": tx["user_id"]},
-            {"$set": {"plan": tx["plan_id"], "plan_updated_at": now_utc().isoformat()}},
-        )
+        return tx
+    # Fail closed: always verify with Razorpay that the order was actually paid
+    if not rzp:
+        return tx
+    try:
+        order = rzp.order.fetch(order_id)
+    except Exception as e:
+        log.warning(f"Razorpay order fetch failed for {order_id}: {e}")
+        return tx
+    is_paid = (order.get("status") == "paid") or (
+        order.get("amount_paid", 0) >= order.get("amount", 0) and order.get("amount", 0) > 0
+    )
+    if not is_paid:
+        return tx
+    await db.payment_transactions.update_one(
+        {"order_id": order_id, "payment_status": {"$ne": "paid"}},
+        {"$set": {"status": "completed", "payment_status": "paid", "updated_at": now_utc().isoformat()}},
+    )
+    valid_until = (now_utc() + timedelta(days=30)).isoformat()
+    await db.users.update_one(
+        {"user_id": tx["user_id"]},
+        {"$set": {"plan": tx["plan_id"], "plan_updated_at": now_utc().isoformat(), "plan_valid_until": valid_until}},
+    )
+    return await db.payment_transactions.find_one({"order_id": order_id}, {"_id": 0})
 
-@api.get("/payments/status/{session_id}")
-async def payment_status(session_id: str, request: Request):
-    tx = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+@api.post("/payments/verify")
+async def verify_payment(inp: VerifyIn, user=Depends(require_user)):
+    """Called by frontend after Razorpay Checkout success handler."""
+    payload = f"{inp.razorpay_order_id}|{inp.razorpay_payment_id}"
+    if not RAZORPAY_KEY_SECRET or not _verify_signature(payload, inp.razorpay_signature, RAZORPAY_KEY_SECRET):
+        raise HTTPException(400, "Invalid signature")
+    tx = await db.payment_transactions.find_one({"order_id": inp.razorpay_order_id}, {"_id": 0})
+    if not tx or tx.get("user_id") != user["user_id"]:
+        raise HTTPException(404, "Transaction not found")
+    await db.payment_transactions.update_one(
+        {"order_id": inp.razorpay_order_id},
+        {"$set": {"razorpay_payment_id": inp.razorpay_payment_id, "signature_verified": True, "updated_at": now_utc().isoformat()}},
+    )
+    tx = await _upgrade_user_for_order(inp.razorpay_order_id)
+    return {"ok": True, "plan_id": tx.get("plan_id") if tx else None, "payment_status": tx.get("payment_status") if tx else None}
+
+@api.get("/payments/status/{order_id}")
+async def payment_status(order_id: str, user=Depends(require_user)):
+    tx = await db.payment_transactions.find_one({"order_id": order_id}, {"_id": 0})
     if not tx:
         raise HTTPException(404, "Transaction not found")
-    if tx.get("payment_status") != "paid":
+    if tx.get("user_id") != user["user_id"]:
+        raise HTTPException(404, "Transaction not found")
+    if tx.get("payment_status") != "paid" and rzp:
+        # _upgrade_user_for_order will only upgrade if Razorpay confirms the order is paid
         try:
-            checkout = _stripe_checkout(str(request.base_url))
-            status_obj: CheckoutStatusResponse = await checkout.get_checkout_status(session_id)
-            await _apply_plan_upgrade(session_id, status_obj)
-            tx = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+            tx = await _upgrade_user_for_order(order_id) or tx
         except Exception as e:
-            log.warning(f"Stripe status poll failed: {e}")
-    return {"session_id": tx["session_id"], "status": tx.get("status"), "payment_status": tx.get("payment_status"), "plan_id": tx.get("plan_id")}
+            log.warning(f"Razorpay order poll failed: {e}")
+    return {
+        "order_id": tx["order_id"],
+        "status": tx.get("status"),
+        "payment_status": tx.get("payment_status"),
+        "plan_id": tx.get("plan_id"),
+    }
 
-@api.post("/webhook/stripe")
-async def stripe_webhook(request: Request):
+@api.post("/webhook/razorpay")
+async def razorpay_webhook(request: Request):
     body = await request.body()
-    sig = request.headers.get("Stripe-Signature", "")
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    # Fail closed: refuse if webhook secret isn't configured OR signature is invalid.
+    if not RAZORPAY_WEBHOOK_SECRET:
+        log.warning("Razorpay webhook received but RAZORPAY_WEBHOOK_SECRET is not set — refusing")
+        raise HTTPException(503, "Webhook secret not configured on server")
+    if not _verify_signature(body.decode("utf-8"), signature, RAZORPAY_WEBHOOK_SECRET):
+        raise HTTPException(400, "Invalid webhook signature")
     try:
-        checkout = _stripe_checkout(str(request.base_url))
-        result = await checkout.handle_webhook(body, sig)
-    except Exception as e:
-        log.error(f"Webhook error: {e}")
-        raise HTTPException(400, "Invalid webhook")
-    if result and getattr(result, "session_id", None):
-        tx = await db.payment_transactions.find_one({"session_id": result.session_id}, {"_id": 0})
-        if tx and tx.get("payment_status") != "paid" and getattr(result, "payment_status", None) == "paid":
-            await db.payment_transactions.update_one(
-                {"session_id": result.session_id, "payment_status": {"$ne": "paid"}},
-                {"$set": {"status": "completed", "payment_status": "paid", "updated_at": now_utc().isoformat()}},
-            )
-            await db.users.update_one(
-                {"user_id": tx["user_id"]},
-                {"$set": {"plan": tx["plan_id"], "plan_updated_at": now_utc().isoformat()}},
-            )
+        event = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid webhook payload")
+    event_name = event.get("event", "")
+    payload = event.get("payload", {})
+    payment_entity = (payload.get("payment") or {}).get("entity") or {}
+    order_entity = (payload.get("order") or {}).get("entity") or {}
+    order_id = payment_entity.get("order_id") or order_entity.get("id")
+    if event_name in ("payment.captured", "order.paid") and order_id:
+        # _upgrade_user_for_order re-verifies with Razorpay before granting the plan
+        await _upgrade_user_for_order(order_id)
+    elif event_name == "payment.failed" and order_id:
+        await db.payment_transactions.update_one(
+            {"order_id": order_id},
+            {"$set": {"status": "failed", "payment_status": "failed", "updated_at": now_utc().isoformat()}},
+        )
     return {"ok": True}
 
 # --- Health ---
