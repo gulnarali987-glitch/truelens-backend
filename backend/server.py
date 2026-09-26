@@ -60,11 +60,12 @@ logging.basicConfig(level=logging.INFO)
 
 # --- Plans / usage ---
 # price_inr is what Razorpay charges; price_usd kept for legacy display but unused for billing
+# yearly = ~20% off vs 12x monthly
 PLANS = {
-    "free":       {"name": "Free",       "monthly_limit": 5,   "price_usd": 0.0,  "price_inr": 0,     "period": None},
-    "starter":    {"name": "Starter",    "monthly_limit": 100, "price_usd": 9.0,  "price_inr": 799,   "period": "monthly"},
-    "business":   {"name": "Business",   "monthly_limit": -1,  "price_usd": 29.0, "price_inr": 2499,  "period": "monthly"},
-    "enterprise": {"name": "Enterprise", "monthly_limit": -1,  "price_usd": 99.0, "price_inr": 8299,  "period": "monthly"},
+    "free":       {"name": "Free",       "monthly_limit": 5,   "price_usd": 0.0,  "price_inr": 0,     "price_inr_yearly": 0,     "period": None},
+    "starter":    {"name": "Starter",    "monthly_limit": 100, "price_usd": 9.0,  "price_inr": 799,   "price_inr_yearly": 7670,  "period": "monthly"},
+    "business":   {"name": "Business",   "monthly_limit": -1,  "price_usd": 29.0, "price_inr": 2499,  "price_inr_yearly": 23990, "period": "monthly"},
+    "enterprise": {"name": "Enterprise", "monthly_limit": -1,  "price_usd": 99.0, "price_inr": 8299,  "price_inr_yearly": 79670, "period": "monthly"},
 }
 
 # --- Models ---
@@ -92,6 +93,7 @@ class SessionExchangeIn(BaseModel):
 class CheckoutIn(BaseModel):
     plan_id: str  # "starter" | "business" | "enterprise"
     origin_url: str
+    cycle: Optional[str] = "monthly"  # "monthly" | "yearly"
 
 # --- Helpers ---
 def now_utc():
@@ -556,7 +558,11 @@ async def create_checkout(inp: CheckoutIn, user=Depends(require_user)):
         raise HTTPException(400, "Invalid plan")
     if not rzp:
         raise HTTPException(500, "Razorpay is not configured")
-    amount_paise = int(PLANS[inp.plan_id]["price_inr"]) * 100
+    cycle = (inp.cycle or "monthly").lower()
+    if cycle not in ("monthly", "yearly"):
+        raise HTTPException(400, "Invalid cycle")
+    amount_inr = int(PLANS[inp.plan_id]["price_inr_yearly"] if cycle == "yearly" else PLANS[inp.plan_id]["price_inr"])
+    amount_paise = amount_inr * 100
     receipt = f"tl_{user['user_id'][:16]}_{int(now_utc().timestamp())}"[:40]
     try:
         order = rzp.order.create({
@@ -567,6 +573,7 @@ async def create_checkout(inp: CheckoutIn, user=Depends(require_user)):
             "notes": {
                 "user_id": user["user_id"],
                 "plan_id": inp.plan_id,
+                "cycle": cycle,
                 "email": user.get("email", ""),
             },
         })
@@ -577,7 +584,8 @@ async def create_checkout(inp: CheckoutIn, user=Depends(require_user)):
         "order_id": order["id"],
         "user_id": user["user_id"],
         "plan_id": inp.plan_id,
-        "amount_inr": int(PLANS[inp.plan_id]["price_inr"]),
+        "cycle": cycle,
+        "amount_inr": amount_inr,
         "amount_paise": amount_paise,
         "currency": "INR",
         "provider": "razorpay",
@@ -590,7 +598,8 @@ async def create_checkout(inp: CheckoutIn, user=Depends(require_user)):
         "order_id": order["id"],
         "key_id": RAZORPAY_KEY_ID,
         "plan_id": inp.plan_id,
-        "amount_inr": int(PLANS[inp.plan_id]["price_inr"]),
+        "cycle": cycle,
+        "amount_inr": amount_inr,
         "amount_paise": amount_paise,
         "currency": "INR",
     }
@@ -627,10 +636,12 @@ async def _upgrade_user_for_order(order_id: str) -> Optional[Dict[str, Any]]:
         {"order_id": order_id, "payment_status": {"$ne": "paid"}},
         {"$set": {"status": "completed", "payment_status": "paid", "updated_at": now_utc().isoformat()}},
     )
-    valid_until = (now_utc() + timedelta(days=30)).isoformat()
+    # Grant plan for 30 days (monthly) or 365 days (yearly)
+    days = 365 if (tx.get("cycle") == "yearly") else 30
+    valid_until = (now_utc() + timedelta(days=days)).isoformat()
     await db.users.update_one(
         {"user_id": tx["user_id"]},
-        {"$set": {"plan": tx["plan_id"], "plan_updated_at": now_utc().isoformat(), "plan_valid_until": valid_until}},
+        {"$set": {"plan": tx["plan_id"], "plan_updated_at": now_utc().isoformat(), "plan_valid_until": valid_until, "plan_cycle": tx.get("cycle", "monthly")}},
     )
     return await db.payment_transactions.find_one({"order_id": order_id}, {"_id": 0})
 
