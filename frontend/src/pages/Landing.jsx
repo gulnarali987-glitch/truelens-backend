@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, ShieldCheck, Zap, QrCode, Receipt, Type as TypeIcon, ImageIcon, Link2 as LinkIcon, Eye } from "lucide-react";
 import Hero3D from "@/components/Hero3D";
 import Header from "@/components/Header";
@@ -86,10 +86,8 @@ function WordTower({ items }) {
   );
 }
 
-/* Horizontal poster reel — scrolls left as you scroll the page */
+/* Horizontal poster reel — auto-slides continuously (like the MarchRow strips) */
 function PosterReel() {
-  const { scrollYProgress } = useScroll();
-  const x = useTransform(scrollYProgress, [0.15, 0.55], ["0%", "-42%"]);
   const posters = [
     { tag: "TEXT · REAL", color: "#2F8F6F", value: "99%", label: "Human-written" },
     { tag: "IMAGE · AI", color: "#C1443B", value: "94%", label: "AI-generated" },
@@ -100,10 +98,16 @@ function PosterReel() {
     { tag: "TEXT · AI", color: "#1B2340", value: "91%", label: "Model output" },
     { tag: "URL · CAUTION", color: "#E5A24A", value: "63%", label: "Uses shortener" },
   ];
+  const row = [...posters, ...posters]; // duplicate for seamless loop
+
   return (
     <div className="relative overflow-hidden">
-      <motion.div className="flex gap-6 pl-6 pr-6" style={{ x }}>
-        {posters.map((p, i) => (
+      <motion.div
+        className="flex gap-6 pl-6 pr-6 w-max"
+        animate={{ x: ["0%", "-50%"] }}
+        transition={{ duration: 45, repeat: Infinity, ease: "linear" }}
+      >
+        {row.map((p, i) => (
           <div
             key={i}
             className="shrink-0 w-[280px] md:w-[340px] h-[380px] md:h-[440px] rounded-3xl p-6 flex flex-col justify-between relative overflow-hidden"
@@ -118,7 +122,7 @@ function PosterReel() {
               <div className="mt-3 text-sm opacity-80">{p.label}</div>
             </div>
             <div className="flex items-center justify-between text-[10px] font-mono opacity-70">
-              <span>TL / {String(i + 1).padStart(3, "0")}</span>
+              <span>TL / {String((i % posters.length) + 1).padStart(3, "0")}</span>
               <span>·</span>
               <span>TRUELENSE / 2026</span>
             </div>
@@ -275,7 +279,7 @@ export default function Landing() {
           </div>
           <div className="hidden md:flex items-center gap-3">
             <SpinMark size={30} color="#C1443B" />
-            <span className="font-mono text-xs tracking-[0.24em] opacity-70">SCROLL TO PLAY →</span>
+            <span className="font-mono text-xs tracking-[0.24em] opacity-70">AUTO-PLAYING →</span>
           </div>
         </div>
         <PosterReel />
