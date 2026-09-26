@@ -56,7 +56,7 @@ export default function Pricing() {
         currency: data.currency || "INR",
         name: "TrueLense",
         description: `${PLANS.find(p => p.id === planId)?.name} — monthly (30 days)`,
-        image: "/favicon.ico",
+        image: "/logo.png",
         theme: { color: "#1B2340" },
         prefill: {
           email: user.email || "",

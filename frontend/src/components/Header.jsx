@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Eye, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 export default function Header({ dark = false }) {
   const { user, logout } = useAuth();
@@ -17,8 +17,8 @@ export default function Header({ dark = false }) {
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
         <Link to="/" className="flex items-center gap-2 group" data-testid="brand-link">
-          <div className={`h-9 w-9 rounded-full flex items-center justify-center ${dark ? "bg-[#EEF1F6] text-[#1B2340]" : "bg-[#1B2340] text-[#EEF1F6]"} group-hover:scale-105 transition-transform`}>
-            <Eye size={18} strokeWidth={2.4} />
+          <div className={`h-9 w-9 rounded-full overflow-hidden ring-1 ${dark ? "ring-white/25" : "ring-black/10"} group-hover:scale-105 transition-transform bg-[#1B2340]`}>
+            <img src="/logo.png" alt="TrueLense" className="h-full w-full object-cover" />
           </div>
           <span className={`font-display text-xl font-bold ${dark ? "text-[#EEF1F6]" : "text-[#1B2340]"}`}>TrueLense</span>
         </Link>
