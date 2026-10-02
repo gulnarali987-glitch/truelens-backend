@@ -17,12 +17,14 @@ import hmac
 import hashlib
 from PIL import Image
 try:
-    from pyzbar.pyzbar import decode as qr_decode
+    import cv2
+    import numpy as np
     _QR_OK = True
-except Exception as _qr_err:  # native libzbar may be missing at boot
-    qr_decode = None
+except Exception as _qr_err:
+    cv2 = None
+    np = None
     _QR_OK = False
-    logging.getLogger("truelense").warning(f"pyzbar disabled: {_qr_err}")
+    logging.getLogger("truelense").warning(f"opencv disabled: {_qr_err}")
 from io import BytesIO
 import trafilatura
 
@@ -515,15 +517,18 @@ async def check_qr(
     elif file:
         if not _QR_OK:
             raise HTTPException(503, "QR image decoding is temporarily unavailable on the server. Please paste the decoded URL directly.")
-        content = await file.read()
+              content = await file.read()
         try:
-            img = Image.open(BytesIO(content))
-            results = qr_decode(img)
+            img = Image.open(BytesIO(content)).convert("RGB")
+            arr = np.array(img)
+            arr_bgr = arr[:, :, ::-1].copy()
+            detector = cv2.QRCodeDetector()
+            data, points, _ = detector.detectAndDecode(arr_bgr)
         except Exception as e:
             raise HTTPException(400, f"Could not read image: {e}")
-        if not results:
+        if not data:
             raise HTTPException(400, "No QR code detected in the image")
-        decoded_url = results[0].data.decode("utf-8", errors="ignore")
+        decoded_url = data 
     else:
         raise HTTPException(400, "Provide either a QR image file or a decoded URL")
     analysis = _analyze_url(decoded_url)
