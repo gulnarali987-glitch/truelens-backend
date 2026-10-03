@@ -517,7 +517,7 @@ async def check_qr(
     elif file:
         if not _QR_OK:
             raise HTTPException(503, "QR image decoding is temporarily unavailable on the server. Please paste the decoded URL directly.")
-              content = await file.read()
+        content = await file.read()
         try:
             img = Image.open(BytesIO(content)).convert("RGB")
             arr = np.array(img)
