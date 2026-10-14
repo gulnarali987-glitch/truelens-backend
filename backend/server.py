@@ -64,10 +64,13 @@ logging.basicConfig(level=logging.INFO)
 # price_inr is what Razorpay charges; price_usd kept for legacy display but unused for billing
 # yearly = ~20% off vs 12x monthly
 PLANS = {
-    "free":       {"name": "Free",       "monthly_limit": 5,   "price_usd": 0.0,  "price_inr": 0,     "price_inr_yearly": 0,     "period": None},
-    "starter":    {"name": "Starter",    "monthly_limit": 100, "price_usd": 9.0,  "price_inr": 799,   "price_inr_yearly": 7670,  "period": "monthly"},
-    "business":   {"name": "Business",   "monthly_limit": -1,  "price_usd": 29.0, "price_inr": 2499,  "price_inr_yearly": 23990, "period": "monthly"},
-    "enterprise": {"name": "Enterprise", "monthly_limit": -1,  "price_usd": 99.0, "price_inr": 8299,  "price_inr_yearly": 79670, "period": "monthly"},
+    "free":       {"name": "Free",       "monthly_limit": 5,    "price_usd": 0.0,  "price_inr": 0,     "price_inr_yearly": 0,     "period": None},
+    "lite":       {"name": "Lite",       "monthly_limit": 50,   "price_usd": 7.0,  "price_inr": 550,   "price_inr_yearly": 5280,  "period": "monthly"},
+    "starter":    {"name": "Starter",    "monthly_limit": 100,  "price_usd": 9.0,  "price_inr": 799,   "price_inr_yearly": 7670,  "period": "monthly"},
+    "growth":     {"name": "Growth",     "monthly_limit": 500,  "price_usd": 18.0, "price_inr": 1500,  "price_inr_yearly": 14400, "period": "monthly"},
+    "business":   {"name": "Business",   "monthly_limit": 1000, "price_usd": 29.0, "price_inr": 2499,  "price_inr_yearly": 23990, "period": "monthly"},
+    "pro":        {"name": "Pro",        "monthly_limit": -1,   "price_usd": 66.0, "price_inr": 5499,  "price_inr_yearly": 52790, "period": "monthly"},
+    "enterprise": {"name": "Enterprise", "monthly_limit": -1,   "price_usd": 99.0, "price_inr": 8299,  "price_inr_yearly": 79670, "period": "monthly"},
 }
 
 # --- Models ---
