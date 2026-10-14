@@ -8,10 +8,13 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 
 const PLANS = [
-  { id: "free",       name: "Free",       usd: 0,  inr: 0,     inr_year: 0,     tag: "Try it",       features: ["5 checks / month", "All 5 checkers", "No credit card"],           cta: "You're here" },
-  { id: "starter",    name: "Starter",    usd: 9,  inr: 799,   inr_year: 7670,  tag: "Individuals",  features: ["100 checks / month", "All 5 checkers", "Email support"],           cta: "Get Starter" },
-  { id: "business",   name: "Business",   usd: 29, inr: 2499,  inr_year: 23990, tag: "Most popular", features: ["Unlimited checks", "Priority processing", "Priority support"],     cta: "Get Business", featured: true },
-  { id: "enterprise", name: "Enterprise", usd: 99, inr: 8299,  inr_year: 79670, tag: "Teams",        features: ["Unlimited checks", "API access", "Team accounts (coming)"],        cta: "Get Enterprise" },
+  { id: "free",       name: "Free",       usd: 0,  inr: 0,     inr_year: 0,     tag: "Try it",        features: ["5 checks / month", "All 5 checkers", "No credit card"],              cta: "You're here" },
+  { id: "lite",       name: "Lite",       usd: 7,  inr: 550,   inr_year: 5280,  tag: "Light use",      features: ["50 checks / month", "All 5 checkers", "Email support"],              cta: "Get Lite" },
+  { id: "starter",    name: "Starter",    usd: 9,  inr: 799,   inr_year: 7670,  tag: "Individuals",    features: ["100 checks / month", "All 5 checkers", "Email support"],             cta: "Get Starter" },
+  { id: "growth",     name: "Growth",     usd: 18, inr: 1500,  inr_year: 14400, tag: "Growing use",    features: ["500 checks / month", "All 5 checkers", "Priority support"],          cta: "Get Growth" },
+  { id: "business",   name: "Business",   usd: 29, inr: 2499,  inr_year: 23990, tag: "Most popular",   features: ["1,000 checks / month", "Priority processing", "Priority support"],   cta: "Get Business", featured: true },
+  { id: "pro",        name: "Pro",        usd: 66, inr: 5499,  inr_year: 52790, tag: "Power users",    features: ["Unlimited checks", "Priority processing", "Priority support"],       cta: "Get Pro" },
+  { id: "enterprise", name: "Enterprise", usd: 99, inr: 8299,  inr_year: 79670, tag: "Teams",          features: ["Unlimited checks", "API access", "Team accounts (coming)"],          cta: "Get Enterprise" },
 ];
 
 function loadRazorpayScript() {
