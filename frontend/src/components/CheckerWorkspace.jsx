@@ -11,8 +11,12 @@ import ResultCard from "@/components/ResultCard";
 import MagneticButton from "@/components/MagneticButton";
 import { Type, ImageIcon, QrCode, Receipt, Loader2, Link2 } from "lucide-react";
 
+// Minimum characters needed for a reliable AI-text result (Winston AI's limit).
+// Change this one number to adjust.
+const MIN_CHARS = 300;
+
 const TABS = [
-  { id: "text", label: "Text", icon: Type, hint: "Paste ~50+ words for best accuracy" },
+  { id: "text", label: "Text", icon: Type, hint: `Paste at least ${MIN_CHARS} characters for accurate results` },
   { id: "image", label: "Image", icon: ImageIcon, hint: "Upload a photo to detect AI generation" },
   { id: "url", label: "URL", icon: Link2, hint: "Paste an article URL — we scan the main content only" },
   { id: "qr", label: "QR Code", icon: QrCode, hint: "Upload a QR image or paste the decoded link" },
@@ -32,6 +36,11 @@ export default function CheckerWorkspace() {
 
   const current = TABS.find(t => t.id === tab);
 
+  // Live character count (instant, no server call)
+  const charCount = text.trim().length;
+  const enoughChars = charCount >= MIN_CHARS;
+  const charsLeft = Math.max(0, MIN_CHARS - charCount);
+
   const handleQuotaError = (err) => {
     const d = err?.response?.data?.detail || err?.response?.data;
     if (err?.response?.status === 402) {
@@ -50,7 +59,11 @@ export default function CheckerWorkspace() {
     try {
       let data;
       if (tab === "text") {
-        if (text.trim().length < 10) { toast.error("Please paste at least a few sentences"); setLoading(false); return; }
+        if (!enoughChars) {
+          toast.error(`Please enter at least ${MIN_CHARS} characters. You have ${charCount} so far.`);
+          setLoading(false);
+          return;
+        }
         ({ data } = await api.post("/check/text", { text }));
       } else if (tab === "image") {
         if (!file) { toast.error("Please pick an image"); setLoading(false); return; }
@@ -82,6 +95,8 @@ export default function CheckerWorkspace() {
   };
 
   const resetInputs = () => { setFile(null); setText(""); setQrUrl(""); setPageUrl(""); setResult(null); };
+
+  const textBlocked = tab === "text" && !enoughChars;
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6">
@@ -149,13 +164,27 @@ export default function CheckerWorkspace() {
               </div>
             )}
             {tab === "text" && (
-              <Textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Paste the text you want to verify here… For accurate results, use at least 50 words."
-                className="min-h-[220px] rounded-2xl text-base"
-                data-testid="text-input"
-              />
+              <div>
+                <Textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={`Paste the text you want to verify here… Please use at least ${MIN_CHARS} characters for accurate results.`}
+                  className="min-h-[220px] rounded-2xl text-base"
+                  data-testid="text-input"
+                />
+                <div className="flex items-center justify-between mt-3 text-sm" data-testid="char-counter">
+                  <span className={`font-mono font-semibold ${enoughChars ? "text-[#2F8F6F]" : "text-[#C1443B]"}`}>
+                    {charCount} / {MIN_CHARS} characters
+                  </span>
+                  <span className={enoughChars ? "text-[#2F8F6F]" : "opacity-70"}>
+                    {enoughChars
+                      ? "Good to go — ready to verify"
+                      : charCount === 0
+                        ? `Minimum ${MIN_CHARS} characters needed`
+                        : `${charsLeft} more character${charsLeft === 1 ? "" : "s"} needed`}
+                  </span>
+                </div>
+              </div>
             )}
             {(tab === "image" || tab === "payment") && (
               <Dropzone
@@ -181,7 +210,7 @@ export default function CheckerWorkspace() {
             <MagneticButton strength={0.25}>
               <button
                 onClick={run}
-                disabled={loading}
+                disabled={loading || textBlocked}
                 className="btn-pill mt-6 bg-[#1B2340] text-[#EEF1F6] hover:bg-[#0F1428] disabled:opacity-60 w-full md:w-auto flex items-center justify-center gap-2"
                 data-testid="verify-btn"
               >
