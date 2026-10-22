@@ -23,6 +23,81 @@ const TABS = [
   { id: "payment", label: "Payment SS", icon: Receipt, hint: "Upload a payment screenshot to detect edits" },
 ];
 
+// Sample results shown before the user runs a check. Shapes mirror the real API responses.
+const EXAMPLES = {
+  text: {
+    input: "\"In today's fast-paced digital landscape, leveraging innovative solutions is essential for unlocking sustainable growth and fostering meaningful engagement…\"",
+    result: {
+      verdict: "ai",
+      ai_probability: 92.4,
+      human_probability: 7.6,
+      confidence: 92.4,
+      details: { raw: { score: 7.6, words: 62 } },
+      checker: "text",
+    },
+  },
+  image: {
+    input: "A photo of a mountain lake at sunrise.",
+    result: {
+      verdict: "ai",
+      ai_probability: 87.4,
+      human_probability: 12.6,
+      confidence: 87.4,
+      details: { raw: { ai_generated: 0.874 } },
+      checker: "image",
+    },
+  },
+  url: {
+    input: "https://example.com/blog/how-remote-teams-stay-productive",
+    result: {
+      verdict: "real",
+      ai_probability: 18.2,
+      human_probability: 81.8,
+      confidence: 81.8,
+      source_url: "https://example.com/blog/how-remote-teams-stay-productive",
+      title: "How Remote Teams Stay Productive",
+      word_count: 640,
+      scanned_chars: 3800,
+      excerpt: "Working from home changed how teams plan their week. Instead of long meetings, the best teams we spoke to rely on short daily notes and clear ownership…",
+      checker: "url",
+    },
+  },
+  qr: {
+    input: "A QR code that opens http://bit.ly/pay-now-123",
+    result: {
+      verdict: "unsafe",
+      decoded_url: "http://bit.ly/pay-now-123",
+      analysis: {
+        safe: false,
+        reasons: [
+          "Uses HTTP (not encrypted) — could be intercepted",
+          "Uses URL shortener (bit.ly) — destination hidden",
+        ],
+        warnings: [],
+        url: "http://bit.ly/pay-now-123",
+        host: "bit.ly",
+        scheme: "http",
+        upi: null,
+      },
+      reminder: "Always double-check in your banking or UPI app before paying.",
+      checker: "qr",
+    },
+  },
+  payment: {
+    input: "A screenshot of a UPI payment confirmation.",
+    result: {
+      verdict: "real",
+      ai_probability: 11.8,
+      human_probability: 88.2,
+      confidence: 88.2,
+      details: { raw: { ai_generated: 0.118 } },
+      disclaimer:
+        "This only checks if the screenshot looks AI-edited or manipulated. It does NOT confirm the transaction actually happened. Always verify in your bank or UPI app.",
+      checker: "payment",
+    },
+  },
+};
+
 export default function CheckerWorkspace() {
   const [tab, setTab] = useState("text");
   const [text, setText] = useState("");
@@ -35,6 +110,7 @@ export default function CheckerWorkspace() {
   const navigate = useNavigate();
 
   const current = TABS.find(t => t.id === tab);
+  const example = EXAMPLES[tab];
 
   // Live character count (instant, no server call)
   const charCount = text.trim().length;
@@ -225,10 +301,22 @@ export default function CheckerWorkspace() {
             <ResultCard result={result} checker={tab} />
           ) : (
             <div className="glass rounded-3xl p-6 md:p-8 h-full" data-testid="result-placeholder">
-              <div className="label-tiny opacity-60 mb-2">Result</div>
-              <h3 className="font-display text-xl font-bold text-[#1B2340]">Nothing to show yet</h3>
-              <p className="text-sm opacity-70 mt-2">Run a check to see the verdict, confidence score and reasoning here.</p>
-              <div className="mt-6 space-y-2 text-sm opacity-70">
+              <div className="flex items-center justify-between mb-3">
+                <div className="label-tiny opacity-60">Example result</div>
+                <span className="text-[10px] font-mono tracking-wider px-2 py-0.5 rounded-full bg-[#E5A24A]/20 text-[#8A5A12]">
+                  SAMPLE
+                </span>
+              </div>
+              <p className="text-sm opacity-70 mb-4" data-testid="example-input">
+                <span className="font-semibold">Sample input:</span> {example.input}
+              </p>
+              <div data-testid="example-result">
+                <ResultCard result={example.result} checker={tab} />
+              </div>
+              <p className="text-xs opacity-60 mt-4">
+                This is only a sample to show how results look. Run your own check and your real result will appear here.
+              </p>
+              <div className="mt-4 space-y-1 text-sm opacity-70">
                 <p>• <span className="font-semibold text-[#2F8F6F]">Green</span> = looks authentic.</p>
                 <p>• <span className="font-semibold text-[#C1443B]">Red</span> = signs of AI or risk.</p>
                 <p>• You get 5 free scans without an account.</p>
