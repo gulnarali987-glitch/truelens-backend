@@ -10,6 +10,8 @@ import Pricing from "@/pages/Pricing";
 import Dashboard from "@/pages/Dashboard";
 import PaymentSuccess from "@/pages/PaymentSuccess";
 import AuthCallback from "@/pages/AuthCallback";
+import About from "@/pages/About";
+import FAQ from "@/pages/FAQ";
 import GlowCursor from "@/components/GlowCursor";
 import ClickBurst from "@/components/ClickBurst";
 import "@/App.css";
@@ -27,6 +29,8 @@ function Router() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/faq" element={<FAQ />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/payment/success" element={<PaymentSuccess />} />
     </Routes>
