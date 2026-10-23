@@ -26,6 +26,8 @@ export default function Header({ dark = false }) {
           <Link to="/" data-testid="nav-home" className={`${linkCls} ${pathname === "/" ? activeCls : inactiveCls}`}>Home</Link>
           <Link to="/app" data-testid="nav-app" className={`${linkCls} ${pathname === "/app" ? activeCls : inactiveCls}`}>Verify</Link>
           <Link to="/pricing" data-testid="nav-pricing" className={`${linkCls} ${pathname === "/pricing" ? activeCls : inactiveCls}`}>Pricing</Link>
+          <Link to="/about" data-testid="nav-about" className={`${linkCls} ${pathname === "/about" ? activeCls : inactiveCls}`}>About</Link>
+          <Link to="/faq" data-testid="nav-faq" className={`${linkCls} ${pathname === "/faq" ? activeCls : inactiveCls}`}>FAQ</Link>
           {user && <Link to="/dashboard" data-testid="nav-dashboard" className={`${linkCls} ${pathname === "/dashboard" ? activeCls : inactiveCls}`}>Dashboard</Link>}
         </nav>
         <div className="flex items-center gap-3">
