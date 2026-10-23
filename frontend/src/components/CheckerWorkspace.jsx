@@ -23,7 +23,7 @@ const TABS = [
   { id: "payment", label: "Payment SS", icon: Receipt, hint: "Upload a payment screenshot to detect edits" },
 ];
 
-// Sample results shown before the user runs a check. Shapes mirror the real API responses.
+// Sample results shown in the "Example" section. Shapes mirror the real API responses.
 const EXAMPLES = {
   text: {
     input: "\"In today's fast-paced digital landscape, leveraging innovative solutions is essential for unlocking sustainable growth and fostering meaningful engagement…\"",
@@ -301,22 +301,10 @@ export default function CheckerWorkspace() {
             <ResultCard result={result} checker={tab} />
           ) : (
             <div className="glass rounded-3xl p-6 md:p-8 h-full" data-testid="result-placeholder">
-              <div className="flex items-center justify-between mb-3">
-                <div className="label-tiny opacity-60">Example result</div>
-                <span className="text-[10px] font-mono tracking-wider px-2 py-0.5 rounded-full bg-[#E5A24A]/20 text-[#8A5A12]">
-                  SAMPLE
-                </span>
-              </div>
-              <p className="text-sm opacity-70 mb-4" data-testid="example-input">
-                <span className="font-semibold">Sample input:</span> {example.input}
-              </p>
-              <div data-testid="example-result">
-                <ResultCard result={example.result} checker={tab} />
-              </div>
-              <p className="text-xs opacity-60 mt-4">
-                This is only a sample to show how results look. Run your own check and your real result will appear here.
-              </p>
-              <div className="mt-4 space-y-1 text-sm opacity-70">
+              <div className="label-tiny opacity-60 mb-2">Result</div>
+              <h3 className="font-display text-xl font-bold text-[#1B2340]">Nothing to show yet</h3>
+              <p className="text-sm opacity-70 mt-2">Run a check to see the verdict, confidence score and reasoning here.</p>
+              <div className="mt-6 space-y-2 text-sm opacity-70">
                 <p>• <span className="font-semibold text-[#2F8F6F]">Green</span> = looks authentic.</p>
                 <p>• <span className="font-semibold text-[#C1443B]">Red</span> = signs of AI or risk.</p>
                 <p>• You get 5 free scans without an account.</p>
@@ -325,6 +313,41 @@ export default function CheckerWorkspace() {
           )}
         </div>
       </div>
+
+      {/* Example section: sits below the checker, changes with the selected tab */}
+      <motion.div
+        key={`example-${tab}`}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mt-10 glass rounded-3xl p-6 md:p-8"
+        data-testid="example-section"
+      >
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <div className="label-tiny opacity-60">See how it works</div>
+            <h3 className="font-display text-xl md:text-2xl font-bold text-[#1B2340] mt-1">
+              Example: {current.label} check
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono tracking-wider px-2 py-0.5 rounded-full bg-[#E5A24A]/20 text-[#8A5A12] shrink-0">
+            SAMPLE
+          </span>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6 items-start">
+          <div className="rounded-2xl bg-[#EEF1F6] p-5">
+            <div className="label-tiny opacity-60 mb-2">Sample input</div>
+            <p className="text-sm opacity-80" data-testid="example-input">{example.input}</p>
+          </div>
+          <div data-testid="example-result">
+            <ResultCard result={example.result} checker={tab} />
+          </div>
+        </div>
+
+        <p className="text-xs opacity-60 mt-5">
+          This is only a sample to show how results look. Run your own check above to get a real result.
+        </p>
+      </motion.div>
     </div>
   );
 }
