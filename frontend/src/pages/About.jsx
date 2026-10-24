@@ -9,7 +9,7 @@ const FOUNDER_NAME = "Aafiya Ali";
 const FOUNDER_BIO =
   "I'm Aafiya, the founder of TrueLense. I started building it after seeing how easily AI-made images, text and fake payment screenshots can fool even careful people. I wanted one simple place where anyone can check before they trust, without needing any technical knowledge.";
 // Leave empty ("") to hide the email row.
-const CONTACT_EMAIL = "";
+const CONTACT_EMAIL = "truelense.offical@gmail.com";
 const PHONES = [
   { display: "+91 74289 18910", href: "tel:+917428918910" },
   { display: "+91 78381 52006", href: "tel:+917838152006" },
