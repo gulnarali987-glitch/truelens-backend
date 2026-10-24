@@ -274,7 +274,7 @@ export default function Landing() {
       <section className="relative bg-[#EEF1F6] py-20 md:py-24 halftone">
         <div className="max-w-7xl mx-auto px-6 mb-10 flex items-end justify-between flex-wrap gap-4">
           <div>
-            <Chip className="border-[#1B2340]/30 text-[#1B2340]/70">00_2 — Recent verdicts</Chip>
+            <Chip className="border-[#1B2340]/30 text-[#1B2340]/70">00_2 — sample verdicts</Chip>
             <PopHeading text="GALLERY" className="text-5xl md:text-7xl mt-3" />
           </div>
           <div className="hidden md:flex items-center gap-3">
@@ -387,7 +387,18 @@ export default function Landing() {
         </div>
       </section>
 
-      <footer className="bg-[#0F1428] text-[#EEF1F6]/60 py-8 text-center text-sm">
+            <footer className="bg-[#0F1428] text-[#EEF1F6]/60 py-10 text-sm">       
+              <div className="max-w-7xl mx-auto px-6 flex flex-col items-center gap-4">          
+                <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[#EEF1F6]/80" data-testid="footer-links">            
+                  <Link to="/about" className="hover:text-white">About</Link>             
+                  <Link to="/faq" className="hover:text-white">FAQ</Link>            
+                  <Link to="/pricing" className="hover:text-white">Pricing</Link>            
+                  <a href="mailto:truelense.offical@gmail.com" className="hover:text-white">Contact</a>         
+                </nav>          
+                <div className="text-center">© 2026 TrueLense · Browser-first · Made with real APIs</div>        
+              </div>       
+            </footer> 
+      className="bg-[#0F1428] text-[#EEF1F6]/60 py-8 text-center text-sm">
         © 2026 TrueLense · Browser-first · Made with real APIs
       </footer>
 
