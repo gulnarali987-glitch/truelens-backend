@@ -57,7 +57,7 @@ export default function Dashboard() {
             <RefreshCw size={20} className="text-[#1B2340] mb-3" />
             <div className="label-tiny opacity-60">Billing</div>
             <div className="text-sm opacity-70 mt-1">Manage your Razorpay-billed plan, past invoices and payment methods.</div>
-            <a href="mailto:support@truelense.app" className="btn-pill mt-5 inline-block bg-[#1B2340]/5 text-[#1B2340] text-sm" data-testid="manage-billing">
+            <a href="mailto:truelense.offical@gmail.com" className="btn-pill mt-5 inline-block bg-[#1B2340]/5 text-[#1B2340] text-sm" data-testid="manage-billing">
               Contact billing
             </a>
           </motion.div>
