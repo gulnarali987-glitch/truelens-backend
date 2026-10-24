@@ -5,9 +5,9 @@ import Header from "@/components/Header";
 import { Phone, Mail, ShieldCheck, Type, ImageIcon, Link2, QrCode, Receipt } from "lucide-react";
 
 // ---- Edit these if you want to personalise the page ----
-const FOUNDER_NAME = "Gulnar Ali";
+const FOUNDER_NAME = "Aafiya Ali";
 const FOUNDER_BIO =
-  "I'm Gulnar, the founder of TrueLense. I started building it after seeing how easily AI-made images, text and fake payment screenshots can fool even careful people. I wanted one simple place where anyone can check before they trust, without needing any technical knowledge.";
+  "I'm Aafiya, the founder of TrueLense. I started building it after seeing how easily AI-made images, text and fake payment screenshots can fool even careful people. I wanted one simple place where anyone can check before they trust, without needing any technical knowledge.";
 // Leave empty ("") to hide the email row.
 const CONTACT_EMAIL = "";
 const PHONES = [
