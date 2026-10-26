@@ -398,7 +398,7 @@ export default function Landing() {
                 <div className="text-center">© 2026 TrueLense · Browser-first · Made with real APIs</div>        
               </div>       
             </footer> 
-      className="bg-[#0F1428] text-[#EEF1F6]/60 py-8 text-center text-sm">
+            <footer className="bg-[#0F1428] text-[#EEF1F6]/60 py-8 text-center text-sm">
         © 2026 TrueLense · Browser-first · Made with real APIs
       </footer>
 
